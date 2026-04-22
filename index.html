@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>bio</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #e2c27d;
+    --glass-border: rgba(255,255,255,0.15);
+    --transition-bg: 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: #fff;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; position: relative;
+  }
+
+  /* ── Background ── */
+  .bg-layer {
+    position: fixed; inset: -40px;
+    background-size: cover; background-position: center;
+    /* FIX: brightness dinaikkan dari 0.45 → 0.65 supaya tidak terlalu gelap */
+    filter: blur(60px) brightness(0.90) saturate(1.4);
+    transition: background-image var(--transition-bg);
+    z-index: 0; transform: scale(1.1);
+  }
+  .bg-overlay {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%);
+    z-index: 1;
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 2;
+    opacity: 0.035; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  /* ── Container ── */
+  .container {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 420px;
+    padding: 0 20px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* ── Profile ── */
+  .profile {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; margin-bottom: 32px;
+  }
+  .profile-avatar {
+    width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--glass-border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4); margin-bottom: 4px;
+  }
+  .profile-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.02em; }
+  .profile-tag  { font-size: 0.75rem; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ── Badge (ganti Spotify → custom) ── */
+  .badge {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 20px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px; padding: 5px 14px 5px 10px;
+  }
+  .badge-text {
+    font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.8);
+  }
+
+  /* ── Carousel ── */
+  .carousel-wrapper {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; height: 280px; margin-bottom: 28px;
+    perspective: 1000px;
+  }
+  .card {
+    position: absolute; width: 180px; height: 220px;
+    border-radius: 20px; overflow: hidden; cursor: pointer;
+    transition: all 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center bottom; user-select: none;
+  }
+  .card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-glass {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.55) 100%);
+    border-radius: 20px; border: 1px solid var(--glass-border);
+  }
+  .card-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 14px 14px 16px; opacity: 0; transform: translateY(6px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-sub   { font-size: 0.7rem; color: rgba(255,255,255,0.6); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .card[data-pos="left"]   { transform: translateX(-155px) translateY(20px) scale(0.82) rotateY(12deg);  z-index: 1; filter: brightness(0.6); }
+  .card[data-pos="center"] { transform: translateX(0) scale(1); z-index: 3; filter: brightness(1); box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.12); }
+  .card[data-pos="center"] .card-info { opacity: 1; transform: translateY(0); }
+  .card[data-pos="center"] .card-glass { background: linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.7) 100%); }
+  .card[data-pos="right"]  { transform: translateX(155px) translateY(20px) scale(0.82) rotateY(-12deg); z-index: 1; filter: brightness(0.6); }
+  .card[data-pos="left"]:hover, .card[data-pos="right"]:hover { filter: brightness(0.85); }
+
+  /*
+    FIX: Titik hijau sekarang TIDAK pakai CSS display berdasarkan data-pos.
+    Dikontrol sepenuhnya oleh JS — hanya muncul saat lagu benar-benar di-play.
+  */
+  .now-playing-dot {
+    position: absolute; top: 12px; right: 12px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #1ed760; display: none; /* default hidden */
+    animation: pulse-dot 1.5s infinite;
+  }
+  /* Kelas .dot-active ditambah JS hanya saat isPlaying = true DAN card music di tengah */
+  .now-playing-dot.dot-active { display: block; }
+
+  @keyframes pulse-dot {
+    0%   { box-shadow: 0 0 0 0 rgba(30,215,96,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(30,215,96,0); }
+    100% { box-shadow: 0 0 0 0 rgba(30,215,96,0); }
+  }
+
+  .tap-hint {
+    font-size: 0.65rem; color: rgba(255,255,255,0.3); letter-spacing: 0.08em;
+    margin-top: -16px; margin-bottom: 20px; text-align: center;
+  }
+
+  /* ── Player Bar ── */
+  .player-bar {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(30px) saturate(1.5);
+    -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    border: 1px solid var(--glass-border); border-radius: 100px;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+    margin-bottom: 20px; min-height: 64px;
+  }
+  .player-thumb { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .player-meta  { flex: 1; min-width: 0; }
+  .player-song   { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player-artist { font-size: 0.68rem; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /*
+    FIX: Progress bar wrapper — dikontrol JS.
+    Hanya visible saat card musik aktif.
+  */
+  .progress-bar {
+    width: 100%; height: 2px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px; margin-top: 5px; overflow: hidden;
+    transition: opacity 0.3s ease;
+  }
+  .progress-bar.hidden-bar { opacity: 0; pointer-events: none; }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), #fff);
+    border-radius: 2px; transition: width 0.5s linear;
+  }
+
+  /* ── Action area ── */
+  .player-action {
+    flex-shrink: 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .music-controls {
+    display: flex; align-items: center; gap: 14px;
+    transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+  }
+  .music-controls.hidden { transform: scale(0); opacity: 0; pointer-events: none; position: absolute; }
+
+  .view-btn-wrap {
+    transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+  }
+  .view-btn-wrap.hidden { transform: scale(0); opacity: 0; pointer-events: none; position: absolute; }
+
+  .view-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 18px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 100px; color: #fff;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.04em;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .view-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.05); }
+
+  .ctrl-btn {
+    background: none; border: none; cursor: pointer; padding: 0;
+    color: rgba(255,255,255,0.65);
+    transition: color 0.2s, transform 0.15s;
+    display: flex; align-items: center;
+  }
+  .ctrl-btn:hover { color: #fff; transform: scale(1.12); }
+  .ctrl-btn.play-btn {
+    width: 32px; height: 32px; background: #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; color: #111;
+    transition: transform 0.15s, background 0.2s;
+  }
+  .ctrl-btn.play-btn:hover { transform: scale(1.1); background: var(--accent); }
+
+  .footer { font-size: 0.65rem; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="bg-layer" id="bgLayer"></div>
+<div class="bg-overlay"></div>
+<div class="grain"></div>
+
+<!--
+  Audio HTML5 — sumber dari GitHub raw.
+  Ganti URL di bawah dengan:
+  https://raw.githubusercontent.com/USERNAME/REPO/main/audio/birds-of-a-feather.mp3
+-->
+<audio id="audioPlayer" preload="auto">
+  <source src="https://raw.githubusercontent.com/GITHUB_USERNAME/REPO_NAME/main/audio/birds-of-a-feather.mp3" type="audio/mpeg" />
+</audio>
+
+<div class="container">
+
+  <div class="profile">
+    <img class="profile-avatar" src="https://i.ibb.co.com/8LnbXNRn/Wosshv.png" alt="wosshv" onerror="this.style.display='none'" />
+    <div class="profile-name">wosshv</div>
+    <div class="profile-tag">links & music</div>
+  </div>
+
+  <!-- Badge custom — ganti Spotify logo & tulisan "Welwel Fren" -->
+  <div class="badge">
+    <span class="badge-text">Pren, welcome ya</span>
+  </div>
+
+  <div class="carousel-wrapper" id="carousel">
+    <!-- LEFT: Discord -->
+    <div class="card" data-pos="left" data-index="0" onclick="handleCardClick(0)">
+      <img class="card-img" src="https://i.ibb.co.com/XxbY95j7/cb2c468e6acd6ed8b4ca97206a5ca245.jpg" alt="Discord" />
+      <div class="card-glass"></div>
+      <div class="now-playing-dot" id="dot0"></div>
+      <div class="card-info">
+        <div class="card-title">Discord</div>
+        <div class="card-sub">Join my server</div>
+      </div>
+    </div>
+
+    <!-- CENTER: Birds of a Feather -->
+    <div class="card" data-pos="center" data-index="1" onclick="handleCardClick(1)">
+      <img class="card-img" src="https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327010d49946" alt="Birds of a Feather" />
+      <div class="card-glass"></div>
+      <div class="now-playing-dot" id="dot1"></div>
+      <div class="card-info">
+        <div class="card-title">BIRDS OF A FEATHER</div>
+        <div class="card-sub">Billie Eilish</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TikTok -->
+    <div class="card" data-pos="right" data-index="2" onclick="handleCardClick(2)">
+      <img class="card-img" src="https://i.ibb.co.com/8LnbXNRn/Wosshv.png" alt="TikTok" />
+      <div class="card-glass"></div>
+      <div class="now-playing-dot" id="dot2"></div>
+      <div class="card-info">
+        <div class="card-title">TikTok</div>
+        <div class="card-sub">@wosshv</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tap-hint">tap side cards to navigate · tap center to open</div>
+
+  <div class="player-bar">
+    <img class="player-thumb" id="playerThumb" src="https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327010d49946" alt="" />
+    <div class="player-meta">
+      <div class="player-song"   id="playerSong">BIRDS OF A FEATHER</div>
+      <div class="player-artist" id="playerArtist">Billie Eilish</div>
+      <div class="progress-bar hidden-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="player-action">
+      <div class="music-controls" id="musicControls">
+        <button class="ctrl-btn" onclick="prevCard()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="ctrl-btn play-btn" onclick="togglePlay()">
+          <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="ctrl-btn" onclick="nextCard()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2-8.14 5.19 2.14L8 15.14V9.86zM16 6h2v12h-2z"/></svg>
+        </button>
+      </div>
+
+      <div class="view-btn-wrap hidden" id="viewBtnWrap">
+        <button class="view-btn" onclick="openCenterLink()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          View
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© 2026 wosshv</div>
+</div>
+
+<script>
+  const cards = [
+    { title:'Discord',             sub:'Join my server', img:'https://i.ibb.co.com/XxbY95j7/cb2c468e6acd6ed8b4ca97206a5ca245.jpg', link:'https://discord.gg/wPc4BwaVfq', type:'link' },
+    { title:'BIRDS OF A FEATHER', sub:'Billie Eilish',  img:'https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327010d49946', link:null, type:'music' },
+    { title:'TikTok',             sub:'@wosshv',        img:'https://i.ibb.co.com/8LnbXNRn/Wosshv.png', link:'https://tiktok.com/@wosshv', type:'link' },
+  ];
+
+  const audio = document.getElementById('audioPlayer');
+  let currentCenter = 1;
+  let isPlaying = false;
+  let progressInterval = null;
+
+  /* ── Dot: hanya nyala saat isPlaying + card music di tengah ── */
+  function updateDot() {
+    // semua dot mati dulu
+    document.querySelectorAll('.now-playing-dot').forEach(d => d.classList.remove('dot-active'));
+    // nyalakan hanya jika lagu sedang diputar DAN card di tengah adalah musik
+    if (isPlaying && cards[currentCenter].type === 'music') {
+      document.getElementById('dot' + currentCenter)?.classList.add('dot-active');
+    }
+  }
+
+  /* ── Progress bar: hanya tampil saat card musik di tengah ── */
+  function updateProgressBarVisibility() {
+    const bar = document.getElementById('progressBar');
+    if (cards[currentCenter].type === 'music') {
+      bar.classList.remove('hidden-bar');
+    } else {
+      bar.classList.add('hidden-bar');
+      document.getElementById('progressFill').style.width = '0%';
+    }
+  }
+
+  /* ── Action bar swap ── */
+  function updateActionBar(type) {
+    const mc  = document.getElementById('musicControls');
+    const vbw = document.getElementById('viewBtnWrap');
+    if (type === 'music') {
+      vbw.classList.add('hidden');
+      setTimeout(() => mc.classList.remove('hidden'), 80);
+    } else {
+      mc.classList.add('hidden');
+      setTimeout(() => vbw.classList.remove('hidden'), 80);
+    }
+  }
+
+  /* ── Render carousel ── */
+  function getPosition(i) {
+    const o = (i - currentCenter + 3) % 3;
+    return o === 0 ? 'center' : o === 1 ? 'right' : 'left';
+  }
+
+  function renderCarousel() {
+    document.querySelectorAll('.card').forEach((el, i) => el.setAttribute('data-pos', getPosition(i)));
+    const c = cards[currentCenter];
+    document.getElementById('playerThumb').src            = c.img;
+    document.getElementById('playerSong').textContent     = c.title;
+    document.getElementById('playerArtist').textContent   = c.sub;
+    document.getElementById('bgLayer').style.backgroundImage = `url('${c.img}')`;
+    updateActionBar(c.type);
+    updateProgressBarVisibility();
+    updateDot();
+  }
+
+  /* ── Card click ── */
+  function handleCardClick(domIndex) {
+    const pos = getPosition(domIndex);
+    if (pos === 'left')  { prevCard(); return; }
+    if (pos === 'right') { nextCard(); return; }
+    const c = cards[currentCenter];
+    if (c.type === 'music') togglePlay();
+    else openCenterLink();
+  }
+
+  function nextCard() {
+    pauseAudio();
+    currentCenter = (currentCenter + 1) % 3;
+    renderCarousel();
+  }
+  function prevCard() {
+    pauseAudio();
+    currentCenter = (currentCenter - 1 + 3) % 3;
+    renderCarousel();
+  }
+
+  function openCenterLink() {
+    const c = cards[currentCenter];
+    if (c.link) window.open(c.link, '_blank');
+  }
+
+  /* ── Audio controls ── */
+  function togglePlay() {
+    if (isPlaying) pauseAudio();
+    else playAudio();
+  }
+
+  function playAudio() {
+    audio.play().then(() => {
+      isPlaying = true;
+      setPlayIcon();
+      updateDot();
+      startProgress();
+    }).catch(() => {
+      // autoplay blocked — butuh interaksi user dulu, tapi tap sudah jadi interaksi jadi harusnya ok
+    });
+  }
+
+  function pauseAudio() {
+    audio.pause();
+    isPlaying = false;
+    setPlayIcon();
+    updateDot();
+    stopProgress();
+  }
+
+  audio.addEventListener('ended', () => {
+    isPlaying = false; setPlayIcon(); updateDot(); stopProgress();
+  });
+
+  function setPlayIcon() {
+    document.getElementById('playIcon').innerHTML = isPlaying
+      ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+  }
+
+  /* ── Progress ── */
+  function startProgress() {
+    stopProgress();
+    progressInterval = setInterval(() => {
+      if (!audio.duration) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      document.getElementById('progressFill').style.width = pct + '%';
+    }, 500);
+  }
+  function stopProgress() {
+    clearInterval(progressInterval); progressInterval = null;
+    document.getElementById('progressFill').style.width = '0%';
+  }
+
+  /* ── Init ── */
+  renderCarousel();
+
+  /* ── Swipe ── */
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) dx < 0 ? nextCard() : prevCard();
+  });
+</script>
+</body>
+</html>
